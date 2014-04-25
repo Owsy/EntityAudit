@@ -152,6 +152,8 @@ class LogRevisionsListener implements EventSubscriber
                     } elseif (isset($meta->associationMappings[$idField])) {
                         $columnName = $meta->associationMappings[$idField]['joinColumns'][0];
                         $types[] = $meta->associationMappings[$idField]['type'];
+                    } else {
+                        continue;
                     }
 
                     $params[] = $meta->reflFields[$idField]->getValue($entity);
@@ -325,7 +327,9 @@ class LogRevisionsListener implements EventSubscriber
                 }
             }
 
-            foreach ($class->fieldNames as $field) {
+            $quoteStrategy = $this->em->getConfiguration()->getQuoteStrategy();
+
+            foreach ($class->fieldNames AS $field) {
                 if (array_key_exists($field, $fields)) {
                     continue;
                 }
@@ -341,7 +345,7 @@ class LogRevisionsListener implements EventSubscriber
                 $placeholders[] = (! empty($class->fieldMappings[$field]['requireSQLConversion']))
                     ? $type->convertToDatabaseValueSQL('?', $this->platform)
                     : '?';
-                $sql .= ', ' . $class->getQuotedColumnName($field, $this->platform);
+                $sql .= ', ' . $quoteStrategy->getColumnName($field, $class, $this->platform);
             }
 
             if (($class->isInheritanceTypeJoined() && $class->rootEntityName == $class->name)
