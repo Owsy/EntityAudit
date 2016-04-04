@@ -32,8 +32,6 @@ use Doctrine\ORM\Events;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Persisters\Entity\BasicEntityPersister;
 use Doctrine\ORM\Persisters\Entity\EntityPersister;
-use Doctrine\ORM\Persisters\Entity\JoinedSubclassPersister;
-use Doctrine\ORM\Utility\PersisterHelper;
 use SimpleThings\EntityAudit\AuditManager;
 
 class LogRevisionsListener implements EventSubscriber
@@ -98,6 +96,7 @@ class LogRevisionsListener implements EventSubscriber
     {
         $em = $eventArgs->getEntityManager();
         $uow = $em->getUnitOfWork();
+        $quoteStrategy = $em->getConfiguration()->getQuoteStrategy();
 
         foreach ($this->extraUpdates as $entity) {
             $className = get_class($entity);
@@ -110,17 +109,24 @@ class LogRevisionsListener implements EventSubscriber
                 continue;
             }
 
-            foreach ($updateData[$meta->table['name']] as $field => $value) {
+            foreach ($updateData[$meta->table['name']] as $column => $value) {
+                $field = $meta->getFieldName($column);
+                $fieldName = $meta->getFieldForColumn($column);
+                if ($meta->hasAssociation($fieldName)) {
+                    $quoted = $field;
+                } else {
+                    $quoted = $quoteStrategy->getColumnName($field, $meta, $this->platform);
+                }
                 $sql = 'UPDATE ' . $this->config->getTableName($meta) . ' ' .
-                    'SET ' . $field . ' = ? ' .
+                    'SET ' . $quoted . ' = ? ' .
                     'WHERE ' . $this->config->getRevisionFieldName() . ' = ? ';
 
                 $params = array($value, $this->getRevisionId());
 
                 $types = array();
 
-                if (in_array($field, $meta->columnNames)) {
-                    $types[] = $meta->fieldMappings[$meta->getFieldForColumn($field)]['type'];
+                if (in_array($column, $meta->columnNames)) {
+                    $types[] = $meta->fieldMappings[$meta->getFieldForColumn($column)]['type'];
                 } else {
                     //try to find column in association mappings
                     $type = null;
@@ -128,7 +134,7 @@ class LogRevisionsListener implements EventSubscriber
                     foreach ($meta->associationMappings as $mapping) {
                         if (isset($mapping['joinColumns'])) {
                             foreach ($mapping['joinColumns'] as $definition) {
-                                if ($definition['name'] == $field) {
+                                if ($definition['name'] == $column) {
                                     $targetTable = $em->getClassMetadata($mapping['targetEntity']);
                                     $type = $targetTable->getTypeOfColumn($definition['referencedColumnName']);
                                 }
@@ -146,15 +152,12 @@ class LogRevisionsListener implements EventSubscriber
                 $types[] = $this->config->getRevisionIdFieldType();
 
                 foreach ($meta->identifier AS $idField) {
-                    if (isset($meta->fieldMappings[$idField])) {
-                        $columnName = $meta->fieldMappings[$idField]['columnName'];
-                        $types[] = $meta->fieldMappings[$idField]['type'];
-                    } elseif (isset($meta->associationMappings[$idField])) {
-                        $columnName = $meta->associationMappings[$idField]['joinColumns'][0];
-                        $types[] = $meta->associationMappings[$idField]['type'];
-                    } else {
+                    $columnNames = $meta->getIdentifierColumnNames();
+                    if (!$columnNames) {
                         continue;
                     }
+
+                    $columnName = $columnNames[0];
 
                     $params[] = $meta->reflFields[$idField]->getValue($entity);
 
