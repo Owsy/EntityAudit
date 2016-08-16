@@ -228,7 +228,7 @@ class AuditReader
             } elseif (isset($class->associationMappings[$idField])) {
                 $columnName = $class->associationMappings[$idField]['joinColumns'][0];
             } else {
-                throw new \RuntimeException('column name not found  for' . $idField);
+                continue;
             }
 
             $whereSQL .= " AND e." . $columnName . " = ?";
@@ -236,6 +236,8 @@ class AuditReader
 
         $columnList = array('e.'.$this->config->getRevisionTypeFieldName());
         $columnMap  = array();
+
+        $quoteStrategy = $this->em->getConfiguration()->getQuoteStrategy();
 
         foreach ($class->fieldNames as $columnName => $field) {
             $tableAlias = $class->isInheritanceTypeJoined() && $class->isInheritedField($field) && !$class->isIdentifier($field)
@@ -247,7 +249,7 @@ class AuditReader
                 '%s.%s AS %s',
                 $tableAlias,
                 $type->convertToPHPValueSQL(
-                    $class->getColumnName($field),
+                    $quoteStrategy->getColumnName($field, $class, $this->platform),
                     $this->platform
                 ),
                 $this->platform->quoteSingleIdentifier($field)
@@ -315,7 +317,7 @@ class AuditReader
 
         unset($row[$this->config->getRevisionTypeFieldName()]);
 
-        return $this->createEntity($class->name, $row, $revision);
+        return $this->createEntity($class->name, $row, $columnMap, $revision);
     }
 
     /**
@@ -323,6 +325,7 @@ class AuditReader
      *
      * @param string $className
      * @param array $data
+     * @param array $columnMap
      * @param $revision
      * @throws DeletedException
      * @throws NoRevisionFoundException
@@ -333,7 +336,7 @@ class AuditReader
      * @throws \Exception
      * @return object
      */
-    private function createEntity($className, array $data, $revision)
+    private function createEntity($className, array $data, array $columnMap, $revision)
     {
         /** @var ClassMetadataInfo|ClassMetadata $class */
         $class = $this->em->getClassMetadata($className);
@@ -407,7 +410,7 @@ class AuditReader
 
                         if ($assoc['isOwningSide']) {
                             foreach ($assoc['targetToSourceKeyColumns'] as $foreign => $local) {
-                                $pk[$foreign] = $data[$local];
+                                $pk[$foreign] = $data[$columnMap[$local]];
                             }
                         } else {
                             /** @var ClassMetadataInfo|ClassMetadata $otherEntityMeta */
@@ -441,7 +444,7 @@ class AuditReader
                         if ($assoc['isOwningSide']) {
                             $associatedId = array();
                             foreach ($assoc['targetToSourceKeyColumns'] as $targetColumn => $srcColumn) {
-                                $joinColumnValue = isset($data[$srcColumn]) ? $data[$srcColumn] : null;
+                                $joinColumnValue = isset($data[$columnMap[$srcColumn]]) ? $data[$columnMap[$srcColumn]] : null;
                                 if ($joinColumnValue !== null) {
                                     $associatedId[$targetClass->fieldNames[$targetColumn]] = $joinColumnValue;
                                 }
@@ -543,6 +546,8 @@ class AuditReader
     {
         $auditedEntities = $this->metadataFactory->getAllClassNames();
 
+        $quoteStrategy = $this->em->getConfiguration()->getQuoteStrategy();
+
         $changedEntities = array();
         foreach ($auditedEntities AS $className) {
             /** @var ClassMetadataInfo|ClassMetadata $class */
@@ -566,7 +571,7 @@ class AuditReader
                     ? 're' // root entity
                     : 'e';
                 $columnList .= ', ' . $tableAlias.'.'.$type->convertToPHPValueSQL(
-                    $class->getQuotedColumnName($field, $this->platform), $this->platform) . ' AS ' . $this->platform->quoteSingleIdentifier($field);
+                    $quoteStrategy->getColumnName($field, $class, $this->platform), $this->platform) . ' AS ' . $this->platform->quoteSingleIdentifier($field);
                 $columnMap[$field] = $this->platform->getSQLResultCasing($columnName);
             }
 
@@ -608,7 +613,7 @@ class AuditReader
                     $id[$idField] = $row[$idField];
                 }
 
-                $entity = $this->createEntity($className, $row, $revision);
+                $entity = $this->createEntity($className, $row, $columnMap, $revision);
                 $changedEntities[] = new ChangedEntity(
                     $className,
                     $id,
@@ -751,7 +756,7 @@ class AuditReader
      * an object with a given id.
      *
      * @param string $className
-     * @param int $id
+     * @param int|int[] $id
      * @param int $oldRevision
      * @param int $newRevision
      * @return array
@@ -820,10 +825,12 @@ class AuditReader
         $columnList = array($this->config->getRevisionFieldName());
         $columnMap  = array();
 
+        $quoteStrategy = $this->em->getConfiguration()->getQuoteStrategy();
+
         foreach ($class->fieldNames as $columnName => $field) {
             $type = Type::getType($class->fieldMappings[$field]['type']);
             $columnList[] = $type->convertToPHPValueSQL(
-                    $class->getQuotedColumnName($field, $this->platform),
+                    $quoteStrategy->getColumnName($field, $class, $this->platform),
                     $this->platform
                 ) . ' AS ' . $this->platform->quoteSingleIdentifier($field);
             $columnMap[$field] = $this->platform->getSQLResultCasing($columnName);
@@ -849,7 +856,7 @@ class AuditReader
         while ($row = $stmt->fetch(Query::HYDRATE_ARRAY)) {
             $rev = $row[$this->config->getRevisionFieldName()];
             unset($row[$this->config->getRevisionFieldName()]);
-            $result[] = $this->createEntity($class->name, $row, $rev);
+            $result[] = $this->createEntity($class->name, $row, $columnMap, $rev);
         }
 
         return $result;

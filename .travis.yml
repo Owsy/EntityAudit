@@ -30,8 +30,8 @@ matrix:
   include:
     - php: 5.6
       env: COMPOSER_FLAGS="--prefer-lowest" DB=sqlite
-  allow_failures:
-    - env: DB=mysql
-    - env: DB=pgsql
-    - php: nightly
+  exclude:
     - php: hhvm
+      env: DB=pgsql  # driver for PostgreSQL currently unsupported by HHVM, requires 3rd party dependency
+  allow_failures:
+    - php: nightly
