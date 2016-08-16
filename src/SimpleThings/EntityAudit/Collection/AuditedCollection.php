@@ -512,6 +512,7 @@ class AuditedCollection implements Collection
                 $groupBy[] = $this->associationDefinition['indexBy'];
             }
             $sql .= 'GROUP BY '.implode(', ', $groupBy);
+            $sql .= ' ORDER BY ' . implode(' ASC, ', $this->metadata->getIdentifierColumnNames()) . ' ASC';
 
             $rows = $this->auditReader->getConnection()->fetchAll($sql, $params);
 
