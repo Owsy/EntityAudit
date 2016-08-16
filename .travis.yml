@@ -35,3 +35,7 @@ matrix:
       env: DB=pgsql  # driver for PostgreSQL currently unsupported by HHVM, requires 3rd party dependency
   allow_failures:
     - php: nightly
+
+branches:
+  only:
+    - master
