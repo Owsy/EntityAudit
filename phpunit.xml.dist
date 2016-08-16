@@ -1,37 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <phpunit bootstrap="./tests/bootstrap.php" colors="true">
-
-    <php>
-        <!-- uncomment, otherwise sqlite memory runs
-        <var name="db_type" value="pdo_mysql"/>
-        <var name="db_host" value="localhost" />
-        <var name="db_username" value="root" />
-        <var name="db_password" value="" />
-        <var name="db_name" value="entity_audit_tests" />
-        <var name="db_port" value="3306"/>-->
-
-        <!-- Database for temporary connections (i.e. to drop/create the main database) -->
-        <var name="tmpdb_type" value="pdo_mysql"/>
-        <var name="tmpdb_host" value="localhost" />
-        <var name="tmpdb_username" value="root" />
-        <var name="tmpdb_password" value="" />
-        <var name="tmpdb_name" value="" />
-        <var name="tmpdb_port" value="3306"/>
-    </php>
-
     <testsuites>
         <testsuite name="SimpleThings EntityAudit">
-            <directory suffix="Test.php">./tests</directory>
+            <directory>./tests/SimpleThings/Tests/EntityAudit</directory>
         </testsuite>
     </testsuites>
-
-    <filter>
-        <whitelist>
-            <directory>./src</directory>
-            <exclude>
-                <directory>./src/SimpleThings/EntityAudit/Resources</directory>
-            </exclude>
-        </whitelist>
-    </filter>
 </phpunit>

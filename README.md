@@ -1,6 +1,6 @@
 # EntityAudit Extension for Doctrine2
 
-[![Build Status](https://travis-ci.org/simplethings/EntityAudit.svg?branch=master)](https://travis-ci.org/simplethings/EntityAudit)
+[![Build Status](https://img.shields.io/travis/Owsy/EntityAudit/master.svg?style=flat-square)](https://travis-ci.org/Owsy/EntityAudit)
 
 This extension for Doctrine 2 is inspired by [Hibernate Envers](http://www.jboss.org/envers) and
 allows full versioning of entities and their associations.
