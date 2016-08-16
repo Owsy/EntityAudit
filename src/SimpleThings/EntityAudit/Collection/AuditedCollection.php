@@ -506,7 +506,12 @@ class AuditedCollection implements Collection
             $sql .= 'AND '.$this->configuration->getRevisionTypeFieldName().' <> ? ';
             //add rev type parameter
             $params[] = 'DEL';
-            $sql .= 'GROUP BY '.implode(', ', $this->metadata->getIdentifierColumnNames());
+
+            $groupBy = $this->metadata->getIdentifierColumnNames();
+            if (isset($this->associationDefinition['indexBy'])) {
+                $groupBy[] = $this->associationDefinition['indexBy'];
+            }
+            $sql .= 'GROUP BY '.implode(', ', $groupBy);
 
             $rows = $this->auditReader->getConnection()->fetchAll($sql, $params);
 
