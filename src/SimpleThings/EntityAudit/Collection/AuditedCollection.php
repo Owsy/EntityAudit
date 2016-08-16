@@ -445,7 +445,6 @@ class AuditedCollection implements Collection
             $params = array();
 
             $sql = 'SELECT MAX('.$this->configuration->getRevisionFieldName().') as rev, ';
-            $sql .= $this->configuration->getRevisionTypeFieldName().' AS revtype, ';
             $sql .= implode(', ', $this->metadata->getIdentifierColumnNames()).' ';
             if (isset($this->associationDefinition['indexBy'])) {
                 $sql .= ', '.$this->associationDefinition['indexBy'].' ';
@@ -504,20 +503,19 @@ class AuditedCollection implements Collection
             $sql .= ') ';
             //end check for deleted revisions older than requested
 
-            $sql .= 'GROUP BY '.implode(', ', $this->metadata->getIdentifierColumnNames())./*', '.$this->configuration->getRevisionTypeFieldName().*/' ';
-            $sql .= 'HAVING '.$this->configuration->getRevisionTypeFieldName().' <> ?';
+            $sql .= 'AND '.$this->configuration->getRevisionTypeFieldName().' <> ? ';
             //add rev type parameter
             $params[] = 'DEL';
+            $sql .= 'GROUP BY '.implode(', ', $this->metadata->getIdentifierColumnNames());
 
             $rows = $this->auditReader->getConnection()->fetchAll($sql, $params);
 
             foreach ($rows as $row) {
                 $entity = array(
                     'rev' => $row['rev'],
-                    'revtype' => $row['revtype']
                 );
 
-                unset($row['rev'], $row['revtype']);
+                unset($row['rev']);
 
                 $entity['keys'] = $row;
 
