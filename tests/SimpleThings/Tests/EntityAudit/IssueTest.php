@@ -40,6 +40,8 @@ use SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue87Project;
 use SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue87ProjectComment;
 use SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue9Address;
 use SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue9Customer;
+use SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue198Owner;
+use SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue198Car;
 
 class IssueTest extends BaseTest
 {
@@ -61,6 +63,8 @@ class IssueTest extends BaseTest
         'SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue156Contact',
         'SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue156ContactTelephoneNumber',
         'SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue156Client',
+        'SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue198Car',
+        'SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue198Owner',
     );
 
     protected $auditedEntities = array(
@@ -81,6 +85,8 @@ class IssueTest extends BaseTest
         'SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue156Contact',
         'SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue156ContactTelephoneNumber',
         'SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue156Client',
+        'SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue198Car',
+        'SimpleThings\Tests\EntityAudit\Fixtures\Issue\Issue198Owner',
     );
 
     public function testIssue31()
@@ -238,5 +244,29 @@ class IssueTest extends BaseTest
 
         $auditReader = $this->_auditManager->createAuditReader($this->_em);
         $object = $auditReader->find(get_class($number), $number->getId(), 1);
+    }
+    
+    public function testIssue198()
+    {
+        $owner = new Issue198Owner();
+        $car = new Issue198Car();
+        
+        $this->_em->persist($owner);
+        $this->_em->persist($car);
+        $this->_em->flush();
+        
+        $owner->addCar($car);
+
+        $this->_em->persist($owner);
+        $this->_em->persist($car);
+        $this->_em->flush();
+
+        $auditReader = $this->_auditManager->createAuditReader($this->_em);
+        
+        $car1 = $auditReader->find(get_class($car), $car->getId(), 1);
+        $this->assertNull($car1->getOwner());
+        
+        $car2 = $auditReader->find(get_class($car), $car->getId(), 2);
+        $this->assertEquals($car2->getOwner()->getId(), $owner->getId());
     }
 }
